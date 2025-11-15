@@ -1,0 +1,167 @@
+// Configuration administrateur
+const ADMIN_PASSWORD = "oussou2012";
+let isAdmin = false;
+
+// Vérifier si l'utilisateur est admin au chargement
+function checkAdmin() {
+    const savedAdmin = localStorage.getItem('blueLockAdmin');
+    if (savedAdmin === ADMIN_PASSWORD) {
+        activateAdminMode();
+    } else {
+        deactivateAdminMode();
+    }
+}
+
+// Activer le mode admin
+function activateAdminMode() {
+    isAdmin = true;
+    document.getElementById('adminSection').style.display = 'block';
+    document.getElementById('adminLogin').style.display = 'none';
+    localStorage.setItem('blueLockAdmin', ADMIN_PASSWORD);
+    loadCodes(); // Recharger pour afficher les boutons admin
+}
+
+// Désactiver le mode admin
+function deactivateAdminMode() {
+    isAdmin = false;
+    document.getElementById('adminSection').style.display = 'none';
+    document.getElementById('adminLogin').style.display = 'block';
+    localStorage.removeItem('blueLockAdmin');
+    loadCodes(); // Recharger pour cacher les boutons admin
+}
+
+// Connexion admin
+function loginAdmin() {
+    const password = prompt("🔐 Mot de passe administrateur requis:");
+    if (password === ADMIN_PASSWORD) {
+        activateAdminMode();
+        showStatus("✅ Connexion administrateur réussie!", "success");
+    } else if (password !== null) {
+        showStatus("❌ Mot de passe incorrect!", "error");
+    }
+}
+
+// Déconnexion admin
+function logoutAdmin() {
+    deactivateAdminMode();
+    showStatus("👋 Déconnexion réussie", "success");
+}
+
+// Charger les codes depuis le localStorage
+function loadCodes() {
+    let codes = localStorage.getItem('blueLockCodes');
+    if (!codes) {
+        codes = [];
+        localStorage.setItem('blueLockCodes', JSON.stringify(codes));
+    } else {
+        codes = JSON.parse(codes);
+    }
+    displayCodes(codes);
+}
+
+// Afficher les codes
+function displayCodes(codes) {
+    const container = document.getElementById('codesContainer');
+    container.innerHTML = '';
+
+    if (codes.length === 0) {
+        container.innerHTML = '<div class="code-item">Aucun code disponible pour le moment</div>';
+        return;
+    }
+
+    codes.forEach((code, index) => {
+        const codeElement = document.createElement('div');
+        codeElement.className = 'code-item';
+        codeElement.innerHTML = `
+            <span class="code-text">${code}</span>
+            ${isAdmin ? `<button class="delete-btn" onclick="deleteCode(${index})">Supprimer</button>` : ''}
+        `;
+        container.appendChild(codeElement);
+    });
+
+    // Ajouter le bouton de déconnexion si admin
+    if (isAdmin) {
+        const logoutBtn = document.createElement('div');
+        logoutBtn.className = 'code-item';
+        logoutBtn.style.justifyContent = 'center';
+        logoutBtn.innerHTML = `
+            <button class="delete-btn logout-btn" onclick="logoutAdmin()">Se déconnecter</button>
+        `;
+        container.appendChild(logoutBtn);
+    }
+}
+
+// Ajouter un nouveau code (admin seulement)
+function addCode() {
+    if (!isAdmin) {
+        showStatus("❌ Accès administrateur requis!", "error");
+        return;
+    }
+
+    const newCodeInput = document.getElementById('newCode');
+    const code = newCodeInput.value.trim().toUpperCase();
+
+    if (!code) {
+        showStatus("❌ Veuillez entrer un code!", "error");
+        return;
+    }
+
+    let codes = JSON.parse(localStorage.getItem('blueLockCodes') || '[]');
+    
+    // Vérifier si le code existe déjà
+    if (codes.includes(code)) {
+        showStatus("❌ Ce code existe déjà!", "error");
+        return;
+    }
+
+    codes.push(code);
+    localStorage.setItem('blueLockCodes', JSON.stringify(codes));
+    
+    newCodeInput.value = '';
+    displayCodes(codes);
+    showStatus("✅ Code ajouté avec succès!", "success");
+}
+
+// Supprimer un code (admin seulement)
+function deleteCode(index) {
+    if (!isAdmin) {
+        showStatus("❌ Accès administrateur requis!", "error");
+        return;
+    }
+
+    if (confirm("Êtes-vous sûr de vouloir supprimer ce code?")) {
+        let codes = JSON.parse(localStorage.getItem('blueLockCodes') || '[]');
+        const deletedCode = codes[index];
+        codes.splice(index, 1);
+        localStorage.setItem('blueLockCodes', JSON.stringify(codes));
+        displayCodes(codes);
+        showStatus(`✅ Code "${deletedCode}" supprimé avec succès!`, "success");
+    }
+}
+
+// Afficher les messages de statut
+function showStatus(message, type) {
+    const statusDiv = document.getElementById('statusMessage');
+    statusDiv.textContent = message;
+    statusDiv.className = `status-message ${type}`;
+    
+    setTimeout(() => {
+        statusDiv.textContent = '';
+        statusDiv.className = 'status-message';
+    }, 3000);
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    checkAdmin();
+    loadCodes();
+});
+
+// Raccourci clavier pour la déconnexion (Ctrl+Shift+L)
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+        if (isAdmin) {
+            logoutAdmin();
+        }
+    }
+});
